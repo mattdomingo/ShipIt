@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode/IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Test/Build
+*.coverage
+htmlcov/
+dist/
+build/
+.eggs/
+
+# PDF/DOCX test files
+backend/parser/tests/*.pdf
+backend/parser/tests/*.docx
+
+# Misc
+*.sqlite3
