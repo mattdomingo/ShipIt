@@ -1,0 +1,12 @@
+name: shipit
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pdfplumber
+  - python-docx
+  - pytest
+  - pip
+  - pip:
+    - typing-extensions 

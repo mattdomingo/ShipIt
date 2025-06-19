@@ -5,7 +5,7 @@ from backend.parser.file_handler import allowed_file, save_file, cleanup_uploads
 def test_allowed_file():
     assert allowed_file("resume.pdf")
     assert allowed_file("resume.docx")
-    assert not allowed_file("resume.pdf")
+    assert not allowed_file("resume.txt")
     assert not allowed_file("resume.exe")
 
 def test_save_file_and_cleanup():

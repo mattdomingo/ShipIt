@@ -23,3 +23,5 @@ Notes:
         - Simple PDFs welcome
         - Faster and lighter
         - Not the best for resumes
+- Packages
+    - Use conda for cross platform consistency
