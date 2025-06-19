@@ -50,7 +50,7 @@ class LayoutParser:
         # Extract data
         contact = contact_extractor.extract_contact_info_with_layout(lines)
         education = education_extractor.extract_education_with_layout(sections, full_text)
-        experience = experience_extractor.extract_experience_with_layout(sections, full_text)
+        experience = experience_extractor.extract_experience_with_layout(layout_data)
         skills = skills_extractor.extract_skills_with_layout(sections, full_text)
         additional_sections = self._extract_additional_sections_with_layout(sections)
         
