@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Add the backend parser to the Python path
-sys.path.append(str(Path(__file__).parent / "backend"))
+sys.path.append(str(Path(__file__).parent.parent / "backend"))
 
 from backend.parser.extractor import extract_resume_data_smart, ResumeExtractor
 from backend.parser.converter import convert_to_text

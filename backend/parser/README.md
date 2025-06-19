@@ -39,3 +39,7 @@ At scale: 10,000 resumes = $0 vs $100-1000
 Rule-based: Deterministic - same input = same output every time
 AI/NLP: Probabilistic - can give different results on identical resumes
 Example: Our parser will ALWAYS extract "Inpro Corporation" correctly, AI might sometimes return "Inpro Corp" or "Inpro"
+
+TODO:
+    - Fix duration formatting
+    - Include project and leadership support
