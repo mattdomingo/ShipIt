@@ -1,149 +1,327 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Pressable, Animated, Easing, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, Text, View, Pressable, Dimensions, ScrollView, Animated } from 'react-native';
+import { designTokens } from '../theme/tokens';
+import { AnimatedBackground } from '../components/shared/AnimatedBackground';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const { width: screenWidth } = Dimensions.get('window');
 
 type LandingScreenNavigationProp = StackNavigationProp<any, any>;
 
 export default function LandingScreen({ navigation }: { navigation: LandingScreenNavigationProp }) {
   const [loginHovered, setLoginHovered] = useState(false);
   const [aboutHovered, setAboutHovered] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const [isSliding, setIsSliding] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      slideAnim.setValue(0);
-      setIsSliding(false);
-    });
-    return unsubscribe;
-  }, [navigation, slideAnim]);
 
   const handleLoginPress = () => {
-    setIsSliding(true);
-    Animated.timing(slideAnim, {
-      toValue: -SCREEN_WIDTH,
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
+    // Elastic slide transition
+    Animated.spring(slideAnim, {
+      toValue: -screenWidth,
+      speed: 12,
+      bounciness: 8,
       useNativeDriver: true,
     }).start(() => {
       navigation.navigate('Login', { from: 'Landing' });
+      // Reset animation for return
+      slideAnim.setValue(0);
     });
   };
 
+  const handleLearnMorePress = () => {
+    scrollViewRef.current?.scrollTo({
+      y: 600, // Approximate position of About section
+      animated: true,
+    });
+  };
+
+  const isTablet = screenWidth > 768;
+
   return (
-    <LinearGradient
-      colors={["#0f2027", "#2c5364"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientBg}
-    >
-      <Animated.View style={[styles.container, { transform: [{ translateX: slideAnim }] }]}> 
-        <Text style={styles.title}>ShipIt</Text>
-        <Text style={styles.subtitle}>Your home for the internship hunt</Text>
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={[styles.button, loginHovered && styles.buttonHovered]}
-            onHoverIn={() => setLoginHovered(true)}
-            onHoverOut={() => setLoginHovered(false)}
-            onPress={handleLoginPress}
-            disabled={isSliding}
-          >
-            <Text style={styles.buttonText}>Log In</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.button, aboutHovered && styles.buttonHovered]}
-            onHoverIn={() => setAboutHovered(true)}
-            onHoverOut={() => setAboutHovered(false)}
-            disabled={isSliding}
-          >
-            <Text style={styles.buttonText}>About</Text>
-          </Pressable>
-        </View>
-        <StatusBar style="light" />
+    <AnimatedBackground>
+      <Animated.View 
+        style={[
+          styles.container,
+          {
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
+      >
+        <StatusBar style="dark" />
+        
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Section */}
+          <View style={[styles.heroSection, isTablet && styles.heroSectionTablet]}>
+            <View style={styles.heroContent}>
+              <Text style={styles.logo}>ShipIt</Text>
+              <Text style={styles.headline}>
+                Your home for the{'\n'}internship hunt
+              </Text>
+              <Text style={styles.subheadline}>
+                Track applications, discover opportunities, and land your dream internship with our comprehensive platform designed for ambitious students.
+              </Text>
+              
+              <View style={styles.ctaContainer}>
+                <Pressable
+                  style={[styles.primaryButton, loginHovered && styles.buttonHovered]}
+                  onHoverIn={() => setLoginHovered(true)}
+                  onHoverOut={() => setLoginHovered(false)}
+                  onPress={handleLoginPress}
+                >
+                  <Text style={styles.primaryButtonText}>Log In</Text>
+                </Pressable>
+                
+                <Pressable
+                  style={[styles.secondaryButton, aboutHovered && styles.secondaryButtonHovered]}
+                  onHoverIn={() => setAboutHovered(true)}
+                  onHoverOut={() => setAboutHovered(false)}
+                  onPress={handleLearnMorePress}
+                >
+                  <Text style={styles.secondaryButtonText}>Learn More</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+          
+          {/* About Section */}
+          <View style={styles.aboutSection}>
+            <View style={[styles.aboutContent, isTablet && styles.aboutContentTablet]}>
+              {/* Left Column - Text */}
+              <View style={[styles.aboutTextColumn, isTablet && styles.aboutTextColumnTablet]}>
+                <Text style={styles.aboutTitle}>About Me</Text>
+                <Text style={styles.aboutText}>
+                  Matthew Domingo – Computer Science major at UW-Madison with minors in Economics & Mathematics. Former TruStage intern with interests in software, data, UX, and high-quality product design.
+                </Text>
+                
+                <Text style={styles.aboutTitle}>About ShipIt</Text>
+                <Text style={styles.aboutText}>
+                  ShipIt is a sleek platform that lets ambitious students track internship applications, set weekly 'apply-to-X' goals, and surface new opportunities – all in one modern dashboard.
+                </Text>
+              </View>
+              
+              {/* Right Column - Illustration */}
+              <View style={[styles.aboutIllustrationColumn, isTablet && styles.aboutIllustrationColumnTablet]}>
+                <View style={styles.mockupContainer}>
+                  <View style={styles.mockupCard}>
+                    <View style={styles.mockupHeader}>
+                      <View style={styles.mockupDot} />
+                      <View style={styles.mockupDot} />
+                      <View style={styles.mockupDot} />
+                    </View>
+                    <View style={styles.mockupContent}>
+                      <View style={styles.mockupBar} />
+                      <View style={[styles.mockupBar, styles.mockupBarShort]} />
+                      <View style={[styles.mockupBar, styles.mockupBarMedium]} />
+                    </View>
+                  </View>
+                  
+                  <View style={[styles.mockupCard, styles.mockupCardSmall]}>
+                    <View style={styles.mockupCircle} />
+                    <View style={styles.mockupTextLine} />
+                    <View style={[styles.mockupTextLine, styles.mockupTextLineShort]} />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
       </Animated.View>
-    </LinearGradient>
+    </AnimatedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  gradientBg: {
-    flex: 1,
-    minHeight: '100%',
-    minWidth: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   container: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 32,
-    padding: 48,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 8,
-    minWidth: 340,
-    maxWidth: 400,
+    flex: 1,
   },
-  title: {
-    fontSize: 54,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 2,
-    marginBottom: 12,
-    fontFamily: 'System',
-    textShadowColor: 'rgba(44,83,100,0.25)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 12,
+  scrollView: {
+    flex: 1,
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#e0e0e0',
-    marginBottom: 40,
-    fontWeight: '400',
-    letterSpacing: 1,
-    textAlign: 'center',
+  heroSection: {
+    minHeight: 600,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
+    justifyContent: 'center',
   },
-  buttonContainer: {
+  heroSectionTablet: {
+    paddingHorizontal: 48,
+    maxWidth: 1200,
+    alignSelf: 'center',
     width: '100%',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 10,
   },
-  button: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  heroContent: {
+    alignItems: 'flex-start',
+  },
+  logo: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: designTokens.colors.accent,
+    letterSpacing: 1,
+    marginBottom: 32,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  headline: {
+    fontSize: designTokens.typography.h1Size,
+    fontWeight: '800',
+    color: designTokens.colors.textPrimary,
+    lineHeight: 40,
+    marginBottom: 16,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  subheadline: {
+    fontSize: 18,
+    color: designTokens.colors.textSecondary,
+    lineHeight: 28,
+    marginBottom: 40,
+    fontFamily: designTokens.typography.fontFamily,
+    maxWidth: 480,
+  },
+  ctaContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
+  primaryButton: {
+    backgroundColor: designTokens.colors.accentSoft,
     paddingVertical: 16,
-    paddingHorizontal: 64,
-    borderRadius: 16,
-    marginVertical: 10,
-    minWidth: 220,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    minWidth: 140,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    ...designTokens.shadows.card,
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.textSecondary + '40',
+    minWidth: 140,
+    alignItems: 'center',
   },
   buttonHovered: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    transform: [{ scale: 1.05 }],
-    shadowOpacity: 0.18,
-    borderColor: '#fff',
+    transform: [{ scale: 1.02 }],
+    ...designTokens.shadows.cardHover,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 20,
+  secondaryButtonHovered: {
+    backgroundColor: designTokens.colors.textPrimary + '05',
+    borderColor: designTokens.colors.textPrimary + '60',
+  },
+  primaryButtonText: {
+    color: designTokens.colors.bgPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  secondaryButtonText: {
+    color: designTokens.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  aboutSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 60,
+    backgroundColor: designTokens.colors.bgPrimary + '20',
+  },
+  aboutContent: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  aboutContentTablet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 48,
+  },
+  aboutTextColumn: {
+    flex: 1,
+  },
+  aboutTextColumnTablet: {
+    flex: 1,
+  },
+  aboutIllustrationColumn: {
+    marginTop: 40,
+  },
+  aboutIllustrationColumnTablet: {
+    flex: 1,
+    marginTop: 0,
+  },
+  aboutTitle: {
+    fontSize: designTokens.typography.h2Size,
     fontWeight: '700',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(44,83,100,0.18)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    color: designTokens.colors.textPrimary,
+    marginBottom: 16,
+    marginTop: 32,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  aboutText: {
+    fontSize: 16,
+    color: designTokens.colors.textSecondary,
+    lineHeight: 24,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  mockupContainer: {
+    alignItems: 'center',
+    gap: 24,
+  },
+  mockupCard: {
+    backgroundColor: designTokens.colors.bgPrimary,
+    borderRadius: 12,
+    padding: 20,
+    width: 240,
+    ...designTokens.shadows.card,
+  },
+  mockupCardSmall: {
+    width: 180,
+    padding: 16,
+  },
+  mockupHeader: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+  },
+  mockupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: designTokens.colors.textSecondary + '30',
+  },
+  mockupContent: {
+    gap: 12,
+  },
+  mockupBar: {
+    height: 8,
+    backgroundColor: designTokens.colors.accent + '40',
+    borderRadius: 4,
+  },
+  mockupBarShort: {
+    width: '60%',
+  },
+  mockupBarMedium: {
+    width: '80%',
+  },
+  mockupCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: designTokens.colors.accentSoft,
+    marginBottom: 12,
+  },
+  mockupTextLine: {
+    height: 6,
+    backgroundColor: designTokens.colors.textSecondary + '20',
+    borderRadius: 3,
+    marginBottom: 8,
+  },
+  mockupTextLineShort: {
+    width: '70%',
   },
 });

@@ -3,10 +3,20 @@ import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/
 import { View, StyleSheet } from 'react-native';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import { LinearGradient } from 'expo-linear-gradient';
+import { designTokens } from '../theme/tokens';
 
 const Stack = createStackNavigator();
+
+function AppBackground({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.background}>
+      {children}
+    </View>
+  );
+}
 
 function GradientBackground({ children }: { children: React.ReactNode }) {
   return (
@@ -33,32 +43,57 @@ const customCardStyleInterpolator = ({ current, layouts }: any) => {
   };
 };
 
+const LandingWithGradient = (props: any) => (
+  <GradientBackground>
+    <LandingScreen {...props} />
+  </GradientBackground>
+);
+
+const LoginWithGradient = (props: any) => (
+  <GradientBackground>
+    <LoginScreen {...props} />
+  </GradientBackground>
+);
+
 export default function MainNavigator() {
   return (
-    <GradientBackground>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          cardStyleInterpolator: customCardStyleInterpolator,
-          transitionSpec: {
-            open: { animation: 'timing', config: { duration: 400 } },
-            close: { animation: 'timing', config: { duration: 350 } },
-          },
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          cardStyle: { backgroundColor: 'transparent' },
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyleInterpolator: customCardStyleInterpolator,
+        transitionSpec: {
+          open: { animation: 'timing', config: { duration: 400 } },
+          close: { animation: 'timing', config: { duration: 350 } },
+        },
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+      }}
+    >
+      <Stack.Screen 
+        name="Landing" 
+        component={LandingWithGradient}
+      />
+      <Stack.Screen 
+        name="Login" 
+        component={LoginWithGradient}
+      />
+      <Stack.Screen 
+        name="Dashboard" 
+        component={DashboardScreen}
+        options={{ 
+          cardStyle: { backgroundColor: designTokens.colors.bgPrimary }
         }}
-      >
-        <Stack.Screen name="Landing" component={LandingScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Favorites" component={FavoritesScreen} />
-        <Stack.Screen name="Dashboard" component={() => null} />
-      </Stack.Navigator>
-    </GradientBackground>
+      />
+      <Stack.Screen name="Favorites" component={FavoritesScreen} />
+    </Stack.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    backgroundColor: designTokens.colors.bgPrimary,
+  },
   gradientBg: {
     flex: 1,
   },
