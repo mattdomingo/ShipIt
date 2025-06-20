@@ -4,7 +4,6 @@ import { View, StyleSheet } from 'react-native';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
-import FavoritesScreen from '../screens/FavoritesScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 import { designTokens } from '../theme/tokens';
 
@@ -84,7 +83,6 @@ export default function MainNavigator() {
           cardStyle: { backgroundColor: designTokens.colors.bgPrimary }
         }}
       />
-      <Stack.Screen name="Favorites" component={FavoritesScreen} />
     </Stack.Navigator>
   );
 }
