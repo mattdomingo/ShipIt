@@ -1,172 +1,269 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, KeyboardAvoidingView, Platform, Animated, Easing, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, KeyboardAvoidingView, Platform, Animated, Dimensions, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { designTokens } from '../theme/tokens';
+import { AnimatedBackground } from '../components/shared/AnimatedBackground';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation, route }: { navigation: StackNavigationProp<any, any>, route: any }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginHovered, setLoginHovered] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
-  const [isSliding, setIsSliding] = useState(false);
+  const [motionReduced, setMotionReduced] = useState(false);
+  const emailInputRef = useRef<TextInput>(null);
+  const slideAnim = useRef(new Animated.Value(screenWidth)).current;
 
   useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    // Check for reduced motion preference
+    const checkMotionPreference = async () => {
+      try {
+        const isReducedMotionEnabled = await AccessibilityInfo.isReduceMotionEnabled();
+        setMotionReduced(isReducedMotionEnabled);
+      } catch (error) {
+        setMotionReduced(false);
+      }
+    };
+    
+    checkMotionPreference();
   }, []);
 
+  useEffect(() => {
+    // Slide in animation when screen loads
+    if (route?.params?.from === 'Landing') {
+      if (motionReduced) {
+        slideAnim.setValue(0);
+        // Focus first input after short delay for accessibility
+        setTimeout(() => {
+          emailInputRef.current?.focus();
+        }, 100);
+      } else {
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          speed: 12,
+          bounciness: 8,
+          useNativeDriver: true,
+        }).start(() => {
+          // Focus first input after animation completes
+          emailInputRef.current?.focus();
+        });
+      }
+    } else {
+      slideAnim.setValue(0);
+      // Focus first input for direct navigation
+      setTimeout(() => {
+        emailInputRef.current?.focus();
+      }, 100);
+    }
+  }, [route, motionReduced, slideAnim]);
+
   const handleBack = () => {
-    setIsSliding(true);
-    Animated.timing(slideAnim, {
-      toValue: SCREEN_WIDTH,
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
+    if (motionReduced) {
       navigation.goBack();
-    });
+    } else {
+      // Elastic slide out
+      Animated.spring(slideAnim, {
+        toValue: screenWidth,
+        speed: 12,
+        bounciness: 8,
+        useNativeDriver: true,
+      }).start(() => {
+        navigation.goBack();
+      });
+    }
+  };
+
+  const handleLogin = () => {
+    navigation.navigate('Dashboard');
   };
 
   return (
-    <LinearGradient
-      colors={["#0f2027", "#2c5364"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientBg}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+    <AnimatedBackground>
+      <Animated.View
+        style={[
+          styles.animatedContainer,
+          {
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
       >
-        <Animated.View style={[styles.container, { transform: [{ translateX: slideAnim }] }]}> 
-          <View style={styles.header}>
-            <Pressable onPress={handleBack} style={styles.backArrow} disabled={isSliding}>
-              <Ionicons name="arrow-back" size={28} color="#2a4d7a" />
-            </Pressable>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.container}
+        >
+          <View style={styles.loginCard}>
+            {/* Header with back button */}
+            <View style={styles.header}>
+              <Pressable onPress={handleBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={designTokens.colors.textSecondary} />
+              </Pressable>
+            </View>
+            
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Text style={styles.logo}>ShipIt</Text>
+            </View>
+            
+            {/* Title */}
+            <Text style={styles.title}>Sign in</Text>
+            
+            {/* Form */}
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  ref={emailInputRef}
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor={designTokens.colors.textSecondary + '80'}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  returnKeyType="next"
+                  onSubmitEditing={() => {
+                    // Focus password field when done with email
+                  }}
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor={designTokens.colors.textSecondary + '80'}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+              </View>
+              
+              <Pressable
+                style={[styles.loginButton, loginHovered && styles.loginButtonHovered]}
+                onHoverIn={() => setLoginHovered(true)}
+                onHoverOut={() => setLoginHovered(false)}
+                onPress={handleLogin}
+              >
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              </Pressable>
+              
+              {/* Forgot password link */}
+              <Pressable style={styles.forgotPasswordContainer}>
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </Pressable>
+            </View>
           </View>
-          <Text style={styles.title}>Log In</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#b0b8c1"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#b0b8c1"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-          <Pressable
-            style={[styles.button, loginHovered && styles.buttonHovered]}
-            onHoverIn={() => setLoginHovered(true)}
-            onHoverOut={() => setLoginHovered(false)}
-            onPress={() => navigation.navigate('Dashboard')}
-            disabled={isSliding}
-          >
-            <Text style={styles.buttonText}>Log In</Text>
-          </Pressable>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+        </KeyboardAvoidingView>
+      </Animated.View>
+    </AnimatedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  gradientBg: {
+  animatedContainer: {
     flex: 1,
-    minHeight: '100%',
-    minWidth: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   container: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 32,
-    padding: 48,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 8,
-    minWidth: 340,
-    maxWidth: 400,
+    paddingHorizontal: 24,
   },
-  title: {
-    fontSize: 54,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 2,
-    marginBottom: 32,
-    fontFamily: 'System',
-    textShadowColor: 'rgba(44,83,100,0.25)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 12,
-  },
-  input: {
+  loginCard: {
+    backgroundColor: designTokens.colors.bgPrimary,
+    borderRadius: designTokens.borderRadius.card,
+    padding: 32,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 18,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.22)',
-  },
-  button: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingVertical: 16,
-    paddingHorizontal: 64,
-    borderRadius: 16,
-    marginVertical: 10,
-    minWidth: 220,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-  },
-  buttonHovered: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    transform: [{ scale: 1.05 }],
-    shadowOpacity: 0.18,
-    borderColor: '#fff',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(44,83,100,0.18)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    maxWidth: 440,
+    ...designTokens.shadows.card,
   },
   header: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 24,
   },
-  backArrow: {
+  backButton: {
     padding: 8,
+    marginLeft: -8,
+    borderRadius: 6,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: designTokens.colors.accent,
+    letterSpacing: 1,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  title: {
+    fontSize: designTokens.typography.h2Size,
+    fontWeight: '700',
+    color: designTokens.colors.textPrimary,
+    marginBottom: 32,
+    textAlign: 'center',
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  form: {
+    width: '100%',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: designTokens.colors.textPrimary,
+    marginBottom: 8,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  input: {
+    backgroundColor: designTokens.colors.bgMuted,
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: designTokens.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: designTokens.colors.textSecondary + '20',
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  loginButton: {
+    backgroundColor: designTokens.colors.accentSoft,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+    ...designTokens.shadows.card,
+  },
+  loginButtonHovered: {
+    transform: [{ scale: 1.02 }],
+    ...designTokens.shadows.cardHover,
+  },
+  loginButtonText: {
+    color: designTokens.colors.bgPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    fontFamily: designTokens.typography.fontFamily,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+  },
+  forgotPasswordText: {
+    color: designTokens.colors.accent,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: designTokens.typography.fontFamily,
   },
 });
