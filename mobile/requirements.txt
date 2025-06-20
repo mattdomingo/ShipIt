@@ -1,0 +1,16 @@
+# This file is for documentation only. The mobile app uses JavaScript/TypeScript and npm/yarn for dependencies.
+# To install dependencies, use `npm install` or `yarn` in the mobile directory.
+# Main dependencies (see package.json):
+#
+# expo
+# react
+# react-native
+# @react-navigation/native
+# @react-navigation/stack
+# @expo/vector-icons
+# expo-linear-gradient
+# react-native-screens
+# react-native-safe-area-context
+# react-native-gesture-handler
+#
+# For full list, see mobile/package.json and mobile/package-lock.json or yarn.lock
