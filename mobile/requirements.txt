@@ -12,5 +12,7 @@
 # react-native-screens
 # react-native-safe-area-context
 # react-native-gesture-handler
+# react-native-svg
+# @react-native-async-storage/async-storage
 #
 # For full list, see mobile/package.json and mobile/package-lock.json or yarn.lock
