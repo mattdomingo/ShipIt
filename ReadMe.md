@@ -11,13 +11,15 @@ ShipIt turns a student résumé into a personalised internship feed and helps th
 ## Key Features
 1. **Smart Résumé Parser** (implemented)  
    Rule-based + layout-aware extraction of contact info, education, skills & experience from PDF/DOCX.
-2. **Internship Matcher** (road-map)  
+2. **Résumé Tailor / Optimizer** (road-map)  
+   Generate a job-specific version of your résumé by analysing a posting's keywords and re-ordering / re-phrasing bullets for maximum ATS match.
+3. **Internship Matcher** (road-map)  
    Rank live job postings against the extracted profile with keyword / TF-IDF scoring.
-3. **Industry News Feed** (road-map)  
+4. **Industry News Feed** (road-map)  
    Curated tech and internship-related news so students keep up with trends.
-4. **Weekly Goals** (Duolingo-style streaks)  
+5. **Weekly Goals** (Duolingo-style streaks)  
    Nudge users to apply to _N_ roles each week; visualised as streaks & XP.
-5. **Application Tracker**  
+6. **Application Tracker**  
    Replaces the spreadsheet many students maintain; Kanban board & analytics for offers, rejections and upcoming interviews.
 
 ---
