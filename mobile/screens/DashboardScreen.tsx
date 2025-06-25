@@ -15,6 +15,7 @@ import { ApplicationsChartCard } from '../components/dashboard/ApplicationsChart
 import { WeeklyGoalCard } from '../components/dashboard/WeeklyGoalCard';
 import { NewPostingsCard } from '../components/dashboard/NewPostingsCard';
 import { NewsCard } from '../components/dashboard/NewsCard';
+import { UploadResponse } from '../services/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -25,6 +26,17 @@ interface DashboardScreenProps {
 export default function DashboardScreen({ navigation }: DashboardScreenProps) {
   const [goalTarget, setGoalTarget] = useState(5);
   const [currentProgress, setCurrentProgress] = useState(3);
+  
+  // Upload state management
+  const [lastUpload, setLastUpload] = useState<{
+    fileName: string;
+    uploadedAt: Date;
+    uploadId: string;
+  } | null>({
+    fileName: "John_Doe_Resume_v3.pdf",
+    uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    uploadId: "demo-upload-id"
+  });
   
   // Animation refs for entrance animations
   const fadeAnims = useRef([
@@ -77,6 +89,24 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
     setGoalTarget(target);
   };
 
+  const handleUploadSuccess = (uploadData: UploadResponse) => {
+    setLastUpload({
+      fileName: uploadData.filename,
+      uploadedAt: new Date(),
+      uploadId: uploadData.upload_id,
+    });
+
+    console.log('Upload successful:', uploadData);
+    
+    // You could also update other parts of the dashboard
+    // or navigate to a specific screen for the uploaded resume
+  };
+
+  const handleUploadError = (error: string) => {
+    console.error('Upload error:', error);
+    // Could show a toast notification or update error state
+  };
+
   const getGridItemLayoutStyle = (colSpan: number) => {
     const isMobile = screenWidth <= 768;
     
@@ -114,9 +144,11 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
             <View style={getGridItemLayoutStyle(6)}>
               <Animated.View style={getGridItemAnimationStyle(0)}>
                 <ResumeUploadCard
-                  lastFileName="John_Doe_Resume_v3.pdf"
-                  lastUploadedAt={new Date(Date.now() - 2 * 60 * 60 * 1000)} // 2 hours ago
+                  lastFileName={lastUpload?.fileName}
+                  lastUploadedAt={lastUpload?.uploadedAt}
                   onPress={() => handleNavigation('Resume')}
+                  onUploadSuccess={handleUploadSuccess}
+                  onUploadError={handleUploadError}
                 />
               </Animated.View>
             </View>

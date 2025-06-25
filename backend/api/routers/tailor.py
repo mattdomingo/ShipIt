@@ -89,26 +89,39 @@ async def create_patch_plan(
         # Generate unique plan ID
         plan_id = str(uuid.uuid4())
         
-        # Create mock patch plan (in production, this would be AI-generated)
+        # Generate actual patch plan using matcher module
+        # Note: In production, you would fetch actual parsed resume and job data
+        # For now, we'll use the matcher with dummy data to demonstrate integration
+        from ...matcher.tailor import generate_patch_plan
+        from ...parser.schemas import ResumeData, ContactInfo, Education, WorkExperience
+        from ...aggregator.scraper import JobPosting
+        
+        # Create dummy data (in production, fetch from storage using upload_id and job_id)
+        dummy_resume = ResumeData(
+            contact=ContactInfo(name="User", email="user@example.com"),
+            education=[Education(degree="Bachelor's", institution="University")],
+            experience=[WorkExperience(company="Company", role="Developer")],
+            skills=["Python", "JavaScript"],
+            additional_sections={},
+            raw_text="Resume content..."
+        )
+        
+        dummy_job = JobPosting(
+            title="Software Engineer",
+            company="Target Company",
+            requirements=["Python", "React", "SQL"],
+            description="Job description..."
+        )
+        
+        # Generate actual patch plan
+        patch_plan = generate_patch_plan(dummy_resume, dummy_job)
         mock_patch = [
             PatchPlanItem(
-                id="experience_1_bullet_1",
-                action=ActionEnum.EDIT,
-                suggested_text="Developed scalable web applications using Python and React",
-                rationale="Emphasize technologies mentioned in job requirements"
-            ),
-            PatchPlanItem(
-                id="skills_section",
-                action=ActionEnum.INSERT_AFTER,
-                suggested_text="SQL, PostgreSQL, REST APIs",
-                rationale="Add technical skills highlighted in job posting"
-            ),
-            PatchPlanItem(
-                id="experience_2_bullet_3",
-                action=ActionEnum.DELETE,
-                suggested_text=None,
-                rationale="Remove bullet point not relevant to target role"
-            )
+                id=item.id,
+                action=ActionEnum(item.action),
+                suggested_text=item.suggested_text,
+                rationale=item.rationale
+            ) for item in patch_plan.items
         ]
         
         # Create plan record (in production, save to database)

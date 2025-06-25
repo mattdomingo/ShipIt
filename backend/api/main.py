@@ -15,7 +15,7 @@ import os
 
 from .models import ErrorResponse
 from .routers import uploads, jobs, tailor
-from .auth import get_current_user
+from .auth import get_current_user, create_demo_token
 from .exceptions import setup_exception_handlers
 
 # Initialize FastAPI app
@@ -30,7 +30,14 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:19006"],  # React Native and web dev servers
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:19006",
+        "http://172.16.0.169:3000",
+        "http://172.16.0.169:19006",
+        "exp://172.16.0.169:8081",  # Expo dev server
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +63,25 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "shipit-api"}
+
+@app.api_route("/v1/auth/demo-token", methods=["GET", "POST"], tags=["auth"])
+async def get_demo_token():
+    """
+    Obtain a demo authentication token (GET or POST).
+    This avoids CORS pre-flight failures by allowing a simple GET request.
+    """
+    token = create_demo_token()
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": 86400  # 24 hours
+    }
+
+# Explicit OPTIONS handler (usually handled by CORSMiddleware, but kept for platforms
+# that still send a pre-flight to this no-body endpoint).
+@app.options("/v1/auth/demo-token")
+async def demo_token_options():
+    return JSONResponse(status_code=200)
 
 if __name__ == "__main__":
     uvicorn.run(

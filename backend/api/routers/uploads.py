@@ -50,16 +50,22 @@ def validate_file(file: UploadFile) -> None:
             {"max_size": "5MB", "received_size": f"{file.size / 1024 / 1024:.2f}MB"}
         )
     
-    # Check MIME type
+    # Check MIME type (some platforms send application/octet-stream)
     if file.content_type not in ALLOWED_MIME_TYPES:
-        raise FileValidationException(
-            "Invalid file type",
-            {
-                "allowed_types": ["PDF", "DOCX"],
-                "received_type": file.content_type,
-                "message": "Only PDF and DOCX files are allowed"
-            }
-        )
+        # Fall back to extension check – allow if extension is valid
+        file_ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+        if file_ext in ALLOWED_EXTENSIONS:
+            # Accept file even if MIME type is generic
+            pass
+        else:
+            raise FileValidationException(
+                "Invalid file type",
+                {
+                    "allowed_types": ["PDF", "DOCX"],
+                    "received_type": file.content_type,
+                    "message": "Only PDF and DOCX files are allowed"
+                }
+            )
     
     # Check file extension
     if file.filename:
@@ -88,6 +94,9 @@ async def upload_resume(
     Returns upload confirmation with unique ID for tracking.
     """
     try:
+        # Debug logging
+        print(f"Received file upload: filename={file.filename}, content_type={file.content_type}, size={getattr(file, 'size', 'unknown')}")
+        
         # Validate file
         validate_file(file)
         
@@ -115,13 +124,15 @@ async def upload_resume(
         }
         upload_records[upload_id] = upload_record
         
-        # Enqueue parsing job (placeholder - just mark as parsed for now)
+        # Enqueue parsing job
         try:
             task_id = enqueue_parse_resume(upload_id, file_path, current_user.user_id)
             upload_record["task_id"] = task_id
+            print(f"Successfully enqueued parsing job with task_id: {task_id}")
         except Exception as e:
             # If job enqueueing fails, we can still return the upload response
             # The parsing can be attempted later
+            print(f"Failed to enqueue parsing job: {e}")
             pass
         
         # Return response
@@ -134,11 +145,14 @@ async def upload_resume(
         
         return response
         
-    except FileValidationException:
+    except FileValidationException as e:
+        # Log validation errors for debugging
+        print(f"File validation failed: {e}")
         # Re-raise validation exceptions to be handled by exception handlers
         raise
     except Exception as e:
         # Handle unexpected errors
+        print(f"Upload failed with error: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to upload file: {str(e)}"
@@ -179,4 +193,115 @@ async def get_upload_status(
         filename=upload_record["filename"],
         mime_type=upload_record["mime_type"],
         status=upload_record["status"]
-    ) 
+    )
+
+
+@router.get("/resume/{upload_id}/parsed-data")
+async def get_parsed_resume_data(
+    upload_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the parsed resume data for a successfully processed upload.
+    
+    - **upload_id**: Unique identifier of the upload
+    
+    Returns the structured parsed resume data including contact info, 
+    education, experience, skills, and additional sections.
+    """
+    from ...parser.extractor import extract_resume_data_smart
+    
+    # Check if upload exists
+    if upload_id not in upload_records:
+        raise HTTPException(
+            status_code=404,
+            detail="Upload not found"
+        )
+    
+    upload_record = upload_records[upload_id]
+    
+    # Check user authorization
+    if upload_record["user_id"] != current_user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied"
+        )
+    
+    # Check if file is ready for parsing
+    if upload_record["status"] not in ["PARSED", "READY"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Resume not ready for parsing. Current status: {upload_record['status']}"
+        )
+    
+    try:
+        # Parse the uploaded file
+        file_path = upload_record["file_path"]
+        resume_data = extract_resume_data_smart(file_path)
+        
+        # Convert to dictionary for JSON response
+        parsed_data = {
+            "upload_id": upload_id,
+            "filename": upload_record["filename"],
+            "contact": {
+                "name": resume_data.contact.name,
+                "email": resume_data.contact.email,
+                "phone": resume_data.contact.phone,
+                "linkedin": resume_data.contact.linkedin,
+                "github": resume_data.contact.github,
+            },
+            "education": [
+                {
+                    "degree": edu.degree,
+                    "institution": edu.institution,
+                    "graduation_year": edu.graduation_year,
+                    "gpa": edu.gpa,
+                    "field": getattr(edu, 'field', None),
+                } for edu in resume_data.education
+            ],
+            "experience": [
+                {
+                    "role": exp.role,
+                    "company": exp.company,
+                    "start_date": exp.start_date,
+                    "end_date": exp.end_date,
+                    "location": getattr(exp, 'location', None),
+                    "description": exp.description,
+                } for exp in resume_data.experience
+            ],
+            "skills": resume_data.skills,
+            "additional_sections": {
+                name: {
+                    "title": section.title,
+                    "content": section.content
+                } for name, section in resume_data.additional_sections.items()
+            },
+            "summary": {
+                "contact_fields_detected": sum([
+                    bool(resume_data.contact.name),
+                    bool(resume_data.contact.email),
+                    bool(resume_data.contact.phone),
+                    bool(resume_data.contact.linkedin),
+                    bool(resume_data.contact.github)
+                ]),
+                "education_entries": len(resume_data.education),
+                "experience_entries": len(resume_data.experience),
+                "skills_count": len(resume_data.skills),
+                "additional_sections_count": len(resume_data.additional_sections),
+                "total_data_points": sum([
+                    bool(resume_data.contact.name),
+                    bool(resume_data.contact.email),
+                    bool(resume_data.contact.phone),
+                    bool(resume_data.contact.linkedin),
+                    bool(resume_data.contact.github)
+                ]) + len(resume_data.education) + len(resume_data.experience) + len(resume_data.skills)
+            }
+        }
+        
+        return parsed_data
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse resume: {str(e)}"
+        ) 
