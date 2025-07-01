@@ -4,8 +4,7 @@
  */
 
 import { Platform } from 'react-native';
-
-const API_BASE_URL = 'http://172.16.0.169:8000/v1'; // Local network IP for mobile development
+import { API_BASE_URL } from '../config';
 
 export interface UploadResponse {
   upload_id: string;
@@ -53,30 +52,19 @@ class ApiService {
    */
   async uploadResume(fileUri: string, fileName: string, mimeType: string): Promise<UploadResponse> {
     try {
-      // Create FormData
       const formData = new FormData();
-      
-      // Debug logging
-      console.log('Upload parameters:', {
-        fileUri,
-        fileName,
-        mimeType,
-        endpoint: `${this.baseURL}/uploads/resume`
-      });
-      
-      // For React Native, we need to structure the file object correctly
-      // This is the standard format that works with React Native's FormData
-      if (Platform.OS === 'ios') {
-        // iOS specific handling
-        const file = {
-          uri: fileUri,
-          type: mimeType || 'application/pdf',
-          name: fileName,
-          filename: fileName, // iOS sometimes needs this
-        };
-        formData.append('file', file as any);
+      const endpoint = `${this.baseURL}/uploads/resume`;
+
+      console.log('Upload parameters:', { fileUri, fileName, mimeType, endpoint });
+
+      if (Platform.OS === 'web') {
+        // Web-based upload (e.g., running in a browser with `npm run web`)
+        const response = await fetch(fileUri);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: mimeType });
+        formData.append('file', file);
       } else {
-        // Android specific handling
+        // Native mobile upload (iOS/Android)
         const file = {
           uri: fileUri,
           type: mimeType || 'application/pdf',
@@ -84,21 +72,17 @@ class ApiService {
         };
         formData.append('file', file as any);
       }
-      
-      console.log('Platform:', Platform.OS);
-      console.log('File URI format:', fileUri);
-      
-      // Try with minimal headers - let React Native handle the rest
+
       const headers: any = {};
       if (this.authToken) {
         headers['Authorization'] = `Bearer ${this.authToken}`;
       }
-      
+
       console.log('Sending request with headers:', headers);
 
-      const response = await fetch(`${this.baseURL}/uploads/resume`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: headers,
+        headers,
         body: formData,
       });
 

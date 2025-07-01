@@ -31,6 +31,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # In-memory storage for demo purposes (replace with database in production)
 upload_records: Dict[str, Dict] = {}
+parsed_data_store: Dict[str, Dict] = {}
 
 
 def validate_file(file: UploadFile) -> None:
@@ -209,32 +210,69 @@ async def get_parsed_resume_data(
     Returns the structured parsed resume data including contact info, 
     education, experience, skills, and additional sections.
     """
-    from ...parser.extractor import extract_resume_data_smart
-    
     # Check if upload exists
     if upload_id not in upload_records:
-        raise HTTPException(
-            status_code=404,
-            detail="Upload not found"
-        )
+        raise HTTPException(status_code=404, detail="Upload not found")
     
     upload_record = upload_records[upload_id]
     
     # Check user authorization
     if upload_record["user_id"] != current_user.user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied"
-        )
+        raise HTTPException(status_code=403, detail="Access denied")
     
-    # Check if file is ready for parsing
-    if upload_record["status"] not in ["PARSED", "READY"]:
+    # Check if parsing is complete
+    if upload_record["status"] != StatusEnum.PARSED:
         raise HTTPException(
             status_code=400,
-            detail=f"Resume not ready for parsing. Current status: {upload_record['status']}"
+            detail=f"Resume parsing not complete. Current status: {upload_record['status']}"
+        )
+    
+    # Retrieve parsed data from the in-memory store
+    parsed_data = parsed_data_store.get(upload_id)
+    
+    if not parsed_data:
+        raise HTTPException(
+            status_code=404,
+            detail="Parsed data not found for this upload"
+        )
+        
+    return parsed_data
+
+
+@router.post("/resume/{upload_id}/parse-now", status_code=202, tags=["development"])
+async def trigger_parsing(
+    upload_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Manually trigger the parsing process for an uploaded resume.
+    
+    **Note:** This is a temporary endpoint for development and testing.
+    In a production environment, this would be handled by a background worker.
+    """
+    from ...parser.extractor import extract_resume_data_smart
+    
+    # Check if upload exists
+    if upload_id not in upload_records:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    
+    upload_record = upload_records[upload_id]
+    
+    # Check user authorization
+    if upload_record["user_id"] != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Prevent re-parsing
+    if upload_record["status"] == StatusEnum.PARSED:
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Resume already parsed"}
         )
     
     try:
+        # Update status to PROCESSING
+        upload_record["status"] = StatusEnum.PROCESSING
+        
         # Parse the uploaded file
         file_path = upload_record["file_path"]
         resume_data = extract_resume_data_smart(file_path)
@@ -298,9 +336,15 @@ async def get_parsed_resume_data(
             }
         }
         
-        return parsed_data
+        # Store parsed data and update status
+        parsed_data_store[upload_id] = parsed_data
+        upload_record["status"] = StatusEnum.PARSED
+        
+        return {"message": "Resume parsing initiated successfully"}
         
     except Exception as e:
+        # If parsing fails, update status to FAILED
+        upload_record["status"] = StatusEnum.FAILED
         raise HTTPException(
             status_code=500,
             detail=f"Failed to parse resume: {str(e)}"

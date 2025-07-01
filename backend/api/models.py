@@ -15,6 +15,7 @@ from datetime import datetime
 class StatusEnum(str, Enum):
     """Status enum for various operations."""
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     PARSED = "PARSED"
     READY = "READY"
     FAILED = "FAILED"

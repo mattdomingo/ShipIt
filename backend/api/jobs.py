@@ -20,45 +20,9 @@ backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-try:
-    from parser.extractor import extract_resume_data_smart
-    from aggregator.scraper import scrape_job_posting
-    from matcher.tailor import generate_patch_plan
-except ImportError as e:
-    # Logger might not be defined yet at import time
-    print(f"Warning: Failed to import required modules: {e}")
-    # Create dummy functions for testing
-    def extract_resume_data_smart(file_path):
-        from parser.schemas import ResumeData, ContactInfo
-        return ResumeData(
-            contact=ContactInfo(name="Test User", email="test@example.com"),
-            education=[],
-            experience=[],
-            skills=["Python"],
-            additional_sections={},
-            raw_text="Test content"
-        )
-    
-    def scrape_job_posting(url):
-        from aggregator.scraper import JobPosting
-        return JobPosting(
-            title="Test Job",
-            company="Test Company",
-            location="Test Location",
-            description="Test description",
-            requirements=["Python"],
-            salary="$50,000",
-            employment_type="Full-time",
-            url=url
-        )
-    
-    def generate_patch_plan(resume_data, job_posting):
-        from matcher.tailor import PatchPlan
-        return PatchPlan(
-            changes=[],
-            score=0.8,
-            recommendations=["Test recommendation"]
-        )
+from parser.extractor import extract_resume_data_smart
+from aggregator.scraper import scrape_job_posting
+from matcher.tailor import generate_patch_plan
 
 logger = logging.getLogger(__name__)
 
@@ -121,42 +85,14 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         resume_data = extract_resume_data_smart(file_path)
         
         # Convert to serializable format for storage
-        parsed_data = {
-            "contact": {
-                "name": resume_data.contact.name,
-                "email": resume_data.contact.email,
-                "phone": resume_data.contact.phone,
-                "linkedin": resume_data.contact.linkedin,
-                "github": resume_data.contact.github
-            },
-            "education": [
-                {
-                    "degree": edu.degree,
-                    "field": edu.field,
-                    "institution": edu.institution,
-                    "graduation_year": edu.graduation_year,
-                    "gpa": edu.gpa
-                } for edu in resume_data.education
-            ],
-            "experience": [
-                {
-                    "company": exp.company,
-                    "role": exp.role,
-                    "start_date": exp.start_date,
-                    "end_date": exp.end_date,
-                    "location": exp.location,
-                    "description": exp.description,
-                    "skills_used": exp.skills_used
-                } for exp in resume_data.experience
-            ],
-            "skills": resume_data.skills,
-            "additional_sections": {
-                name: {
-                    "title": section.title,
-                    "content": section.content
-                } for name, section in resume_data.additional_sections.items()
-            }
-        }
+        parsed_data = resume_data.to_dict()
+        
+        # --- DEBUG LOGGING START ---
+        logger.info("--- DETAILED PARSED DATA ---")
+        logger.info(f"PARSED EDUCATION: {parsed_data.get('education')}")
+        logger.info(f"PARSED EXPERIENCE: {parsed_data.get('experience')}")
+        logger.info("--- END DETAILED PARSED DATA ---")
+        # --- DEBUG LOGGING END ---
         
         result = {
             "upload_id": upload_id,
