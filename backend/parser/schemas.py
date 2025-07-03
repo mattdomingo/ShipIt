@@ -5,7 +5,7 @@ Data structures for resume parsing and extraction.
 Contains all dataclass definitions for structured resume data.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Any
 
 
@@ -18,6 +18,9 @@ class ContactInfo:
     linkedin: Optional[str] = None
     github: Optional[str] = None
 
+    def to_dict(self):
+        return asdict(self)
+
 
 @dataclass
 class Education:
@@ -27,6 +30,9 @@ class Education:
     institution: Optional[str] = None
     graduation_year: Optional[int] = None
     gpa: Optional[float] = None
+
+    def to_dict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -43,6 +49,9 @@ class WorkExperience:
     def __post_init__(self):
         if self.skills_used is None:
             self.skills_used = []
+
+    def to_dict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -64,6 +73,9 @@ class AdditionalSection:
                 else:
                     items.append(line)
         return items
+
+    def to_dict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -95,4 +107,15 @@ class ResumeData:
     
     def has_section(self, section_name: str) -> bool:
         """Check if a section exists (case-insensitive)."""
-        return self.get_section(section_name) is not None 
+        return self.get_section(section_name) is not None
+
+    def to_dict(self):
+        return {
+            "contact": self.contact.to_dict(),
+            "education": [edu.to_dict() for edu in self.education],
+            "experience": [exp.to_dict() for exp in self.experience],
+            "skills": self.skills,
+            "additional_sections": {
+                name: section.to_dict() for name, section in self.additional_sections.items()
+            }
+        } 
