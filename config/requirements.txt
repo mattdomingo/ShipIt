@@ -11,4 +11,5 @@ passlib[bcrypt]>=1.7.4
 celery>=5.3.0
 redis>=5.0.0
 sqlalchemy>=2.0.0
-alembic>=1.13.0 
+alembic>=1.13.0
+requests>=2.28.0 

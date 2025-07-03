@@ -25,16 +25,89 @@ class ExperienceExtractor:
         self.patterns = patterns
 
     def extract_experience(self, text: str) -> List[WorkExperience]:
-        """Extract work experience from resume text using basic text parsing."""
+        """Extract work experience from resume text using a more robust, entry-based approach."""
         from .section_parser import SectionParser
         
+        experience_list = []
         section_parser = SectionParser()
-        experience_section = section_parser.find_section(text, SectionHeaders.EXPERIENCE)
         
-        if experience_section:
-            return self._parse_experience_text_based(experience_section)
+        # Find the experience section
+        experience_section_text = section_parser.find_section(text, SectionHeaders.EXPERIENCE)
         
-        return []
+        if experience_section_text:
+            # Split the section into entries based on blank lines
+            entries = re.split(r'\n\s*\n', experience_section_text.strip())
+            for entry_text in entries:
+                if not entry_text.strip():
+                    continue
+                
+                # For each entry, parse the details
+                experience = self._parse_single_experience_entry(entry_text)
+                if experience:
+                    experience_list.append(experience)
+        
+        return experience_list
+
+    def _parse_single_experience_entry(self, text: str) -> Optional[WorkExperience]:
+        """
+        Parses a single block of text representing one job experience.
+        """
+        if not text:
+            return None
+
+        experience = WorkExperience()
+        lines = text.strip().split('\n')
+        
+        if not lines:
+            return None
+
+        # Identify which lines are part of the header vs. the description
+        header_lines = []
+        description_lines = []
+        header_parsed = False
+
+        # A simple heuristic: lines with dates or company/role keywords are headers.
+        # Everything after the first non-header line is description.
+        for i, line in enumerate(lines):
+            if not header_parsed:
+                # Check if it's a header line (contains role, company, or dates)
+                if self._contains_company_indicators(line) or self._contains_role_date_pattern(line) or (self._contains_job_keywords(line) and len(line.split()) < 8):
+                    header_lines.append(line)
+                else:
+                    # This is the first line of the description
+                    header_parsed = True
+                    description_lines.append(line)
+            else:
+                description_lines.append(line)
+
+        # Parse header lines
+        for i, line in enumerate(header_lines):
+            if i == 0:
+                self._parse_header_line(line, experience)
+            else:
+                # If role or company is missing, try to find it in subsequent header lines
+                if not experience.role and (self._contains_role_date_pattern(line) or self._looks_like_role_line(line)):
+                    self._parse_role_date_line(line, experience)
+                elif not experience.company and self._looks_like_company_line(line):
+                     self._parse_company_line(line, experience)
+
+        # Clean and set description from all identified description lines
+        cleaned_description = []
+        for line in description_lines:
+            clean_line = line.lstrip('•-*◦ \t').strip()
+            if clean_line:
+                cleaned_description.append(clean_line)
+        
+        if cleaned_description:
+            experience.description = '\n'.join(cleaned_description)
+
+        # Extract dates from the whole text block for robustness
+        self._extract_dates(text, experience)
+
+        if experience.company or experience.role:
+            return experience
+        
+        return None
 
     def extract_experience_with_layout(self, layout_data: Dict) -> List[WorkExperience]:
         """

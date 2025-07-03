@@ -29,37 +29,18 @@ class EducationExtractor:
         section_parser = SectionParser()
         
         # Look for education section
-        education_section = section_parser.find_section(text, SectionHeaders.EDUCATION)
+        education_section_text = section_parser.find_section(text, SectionHeaders.EDUCATION)
         
-        if education_section:
-            # Extract degree information
-            degree_matches = self.patterns.degree_pattern.findall(education_section)
-            institution_lines = [line for line in education_section.split('\n') 
-                               if self.patterns.institution_pattern.search(line)]
-            year_matches = self.patterns.year_pattern.findall(education_section)
-            gpa_matches = self.patterns.gpa_pattern.findall(education_section)
-            
-            # Create education entry
-            education = Education()
-            
-            if degree_matches:
-                education.degree = degree_matches[0].title()
-            
-            if institution_lines:
-                education.institution = institution_lines[0].strip()
-            
-            if year_matches:
-                # Get the most recent year (assuming graduation year)
-                education.graduation_year = int(max(year_matches))
-            
-            if gpa_matches:
-                try:
-                    education.gpa = float(gpa_matches[0])
-                except ValueError:
-                    pass
-            
-            if any([education.degree, education.institution, education.graduation_year]):
-                education_list.append(education)
+        if education_section_text:
+            # Split the section into entries based on blank lines
+            entries = re.split(r'\n\s*\n', education_section_text.strip())
+            for entry_text in entries:
+                if not entry_text.strip():
+                    continue
+                
+                education = self._parse_single_education_entry(entry_text)
+                if education:
+                    education_list.append(education)
         
         return education_list
 

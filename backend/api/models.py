@@ -15,17 +15,31 @@ from datetime import datetime
 class StatusEnum(str, Enum):
     """Status enum for various operations."""
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     PARSED = "PARSED"
     READY = "READY"
     FAILED = "FAILED"
 
 
-class ActionEnum(str, Enum):
-    """Action enum for patch plan items."""
-    KEEP = "KEEP"
-    DELETE = "DELETE"
-    EDIT = "EDIT"
-    INSERT_AFTER = "INSERT_AFTER"
+# Import ActionEnum from matcher module to maintain consistency
+import sys
+import os
+
+# Add backend path for imports
+backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+try:
+    from matcher.tailor import ActionEnum
+except ImportError:
+    # Fallback if matcher module isn't available
+    from enum import Enum
+    class ActionEnum(str, Enum):
+        KEEP = "KEEP"
+        DELETE = "DELETE"
+        EDIT = "EDIT"
+        INSERT_AFTER = "INSERT_AFTER"
 
 
 # Upload Models
@@ -149,7 +163,7 @@ class ErrorResponse(BaseModel):
     """Standard error response model."""
     code: str
     message: str
-    details: Optional[Union[str, dict]] = None
+    details: Optional[Union[str, dict, list]] = None
     
     class Config:
         json_schema_extra = {

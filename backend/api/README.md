@@ -229,14 +229,26 @@ backend/api/
 - **Testing**: pytest with FastAPI TestClient
 - **Documentation**: OpenAPI/Swagger auto-generation
 
+### Architecture Integration
+The API now properly integrates with the specialized backend modules:
+- **`backend/parser`**: Handles PDF/DOCX resume parsing and text extraction
+- **`backend/aggregator`**: Manages job posting scraping from various job boards
+- **`backend/matcher`**: Provides AI-powered resume tailoring and matching logic
+
+This separation of concerns ensures:
+- **Maintainability**: Each module has a single responsibility
+- **Testability**: Business logic can be tested independently of the API
+- **Reusability**: Core functionality can be used in other contexts
+- **Scalability**: Modules can be optimized and scaled independently
+
 ## 🚨 Current Limitations (Stage 1)
 
 This is a **Stage 1 implementation** with the following limitations:
 
-❌ **No Business Logic Implemented**
-- Resume parsing returns mock data
-- Job scraping returns mock data  
-- Patch plan generation returns mock suggestions
+✅ **Business Logic Integration**
+- Resume parsing now uses `backend/parser` module for actual PDF/DOCX processing
+- Job scraping now uses `backend/aggregator` module for URL processing
+- Patch plan generation now uses `backend/matcher` module for AI-powered suggestions
 
 ❌ **No Persistent Storage**
 - All data stored in memory (will be lost on restart)
