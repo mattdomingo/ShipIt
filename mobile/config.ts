@@ -23,7 +23,7 @@ import { Platform } from 'react-native';
  *
  * ====================================================================================
  */
-const DEV_API_URL = 'http://<YOUR_LOCAL_IP_ADDRESS>:8000/v1';
+const DEV_API_URL = 'http://172.16.0.169:8000/v1';
 
 /**
  * For production builds, you would use your actual production API URL.

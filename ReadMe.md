@@ -2,11 +2,26 @@
 
 ShipIt turns a student résumé into a personalised internship feed and helps them stay on track during the recruiting season.
 
+## 🚀 Quick Start
+
+**Start all backend services:**
+```bash
+./start_servers.sh
+```
+
+**Start mobile app (new terminal):**
+```bash
+./start_mobile.sh
+```
+
+See [QUICK_START.md](QUICK_START.md) for detailed instructions.
+
 ## Project Structure
 - `backend/` — Python modules for résumé parsing, job aggregation and matching
 - `mobile/`  — React-Native / Expo client
 - `config/`  — Conda + pip requirements, PyTest config
-- `tools/`   — helper scripts (test runner, etc.)
+- `tools/`   — utility scripts (testing, data formatting, etc.)
+- `docs/`    — project documentation and summaries
 
 ## Key Features
 1. **Smart Résumé Parser** (implemented)  
@@ -24,38 +39,52 @@ ShipIt turns a student résumé into a personalised internship feed and helps th
 
 ---
 
-## Installing Dependencies
-The quickest way is to run the platform-specific script at the repo root.
+## Manual Setup (if startup scripts don't work)
 
-### macOS / Linux
+### Prerequisites
+- Python 3.8+ with virtual environment at `.venv/`
+- Redis installed (`brew install redis` on macOS)
+- Node.js and npm installed
+
+### Backend Setup
 ```bash
-chmod +x install_dependencies.sh   # first time only
-./install_dependencies.sh           # sets up Conda env (or pip) + npm packages
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r config/requirements.txt
+
+# Start services (3 terminals)
+redis-server                                                    # Terminal 1
+python backend/api/run_server.py                              # Terminal 2
+celery -A backend.api.jobs.celery_app worker --loglevel=info  # Terminal 3
 ```
 
-### Windows
-```cmd
-install_dependencies.bat           # does the same via conda/pip + npm
+### Mobile Setup
+```bash
+cd mobile
+npm install
+npx expo start
 ```
-These scripts:
-1. Create / update the Conda environment `shipit` from `config/environment.yml` (if Conda is installed), **or** fall back to `pip install -r config/requirements.txt`.
-2. Run `npm install` inside the `mobile/` folder to install the React-Native dependencies.
 
 ---
 
-## Running Tests (backend)
+## Running Tests
 ```bash
-# From project root
-./tools/run_tests.sh        # macOS / Linux
-run_tests.bat               # Windows
+# Backend tests
+pytest
+
+# Integration tests
+python tools/test_upload_parsing.py <resume_file>
+python tools/test_real_resume.py <resume_file>
 ```
 
-## Running the Mobile App
-```bash
-cd mobile
-npm start           # or: npm run ios / android / web
-```
-Expo Dev Tools will open; follow its instructions to launch the simulator or connect a device.
+## Utility Scripts
+- `tools/test_upload_parsing.py` — Full pipeline integration test
+- `tools/test_real_resume.py` — Direct parser testing with detailed output
+- `tools/get_parsed_resume.py` — Fetch and display parsed data from API
+- `tools/format_resume_output.py` — Quick formatting for parsed data
 
 ## Contributing
 1. Fork & clone the repository.
