@@ -54,3 +54,7 @@ env/
 # Process management (startup scripts)
 .pids/
 dump.rdb
+
+# Upload directories (user-generated content)
+uploads/
+backend/uploads/
