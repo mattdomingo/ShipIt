@@ -8,22 +8,23 @@
 import { Platform } from 'react-native';
 
 /**
- * ====================================================================================
- * !! IMPORTANT !! - SET YOUR DEVELOPMENT API URL HERE
- * ====================================================================================
+ * =============================================================================
+ * Development Configuration
+ * =============================================================================
  *
- * To connect the mobile app to your local backend server, you must replace the
- * placeholder IP address with your computer's local network IP address.
- *
- * How to find your local IP address:
- *   - On macOS: Go to System Settings > Network > Wi-Fi. Your IP address is listed there.
- *   - On Windows: Open Command Prompt and type `ipconfig`. Look for the "IPv4 Address".
- *
- * The IP address will likely look like `192.168.x.x` or `10.0.x.x`.
- *
- * ====================================================================================
+ * The development API URL is read from the `DEV_API_URL` environment variable.
+ * The `start_mobile.sh` script sets this automatically based on your computer's IP address.
  */
-const DEV_API_URL = 'http://172.16.0.169:8000/v1';
+/**
+ * Development API URL
+ *
+ * When running the app locally, the backend URL can be provided via the
+ * `DEV_API_URL` environment variable. The `start_mobile.sh` script sets this
+ * automatically based on your computer's IP address. If the variable is not
+ * set, we fall back to `http://localhost:8000/v1` which works when running in
+ * a web browser.
+ */
+const DEV_API_URL = process.env.DEV_API_URL || 'http://localhost:8000/v1';
 
 /**
  * For production builds, you would use your actual production API URL.
