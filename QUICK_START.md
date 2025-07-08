@@ -23,7 +23,7 @@ This single command will:
 
 This will:
 - ✅ Auto-detect your local IP address
-- ✅ Update mobile app config automatically
+- ✅ Set `DEV_API_URL` environment variable for the app
 - ✅ Install dependencies if needed
 - ✅ Start Expo development server
 - ✅ Show QR code for your phone
@@ -74,7 +74,7 @@ sudo apt-get install redis-server
 **"Network request failed" on phone**
 - Make sure both devices are on the same WiFi
 - Check that `./start_servers.sh` is running
-- Verify the IP address in `mobile/config.ts` matches your computer's IP
+- Ensure `DEV_API_URL` points to your computer's IP (set automatically by `start_mobile.sh`)
 
 **"Virtual environment not found"**
 ```bash

@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOBILE_DIR="$PROJECT_ROOT/mobile"
-CONFIG_FILE="$MOBILE_DIR/config.ts"
+CONFIG_FILE="$MOBILE_DIR/config.ts"  # Deprecated: config is now via env var
 
 print_header() {
     echo -e "${BLUE}"
@@ -46,22 +46,14 @@ get_local_ip() {
     echo "$LOCAL_IP"
 }
 
-update_config() {
-    echo -e "${YELLOW}Updating mobile app configuration...${NC}"
-    
+set_dev_api_url() {
+    echo -e "${YELLOW}Configuring development API URL...${NC}"
+
     LOCAL_IP=$(get_local_ip)
-    echo -e "${GREEN}Detected local IP: $LOCAL_IP${NC}"
-    
-    # Update the config file with the detected IP
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS sed
-        sed -i '' "s|const DEV_API_URL = 'http://.*:8000/v1';|const DEV_API_URL = 'http://$LOCAL_IP:8000/v1';|" "$CONFIG_FILE"
-    else
-        # Linux sed
-        sed -i "s|const DEV_API_URL = 'http://.*:8000/v1';|const DEV_API_URL = 'http://$LOCAL_IP:8000/v1';|" "$CONFIG_FILE"
-    fi
-    
-    echo -e "${GREEN}Mobile app configured to use: http://$LOCAL_IP:8000/v1${NC}"
+    DEV_URL="http://$LOCAL_IP:8000/v1"
+    export DEV_API_URL="$DEV_URL"
+
+    echo -e "${GREEN}DEV_API_URL set to: $DEV_URL${NC}"
 }
 
 check_backend() {
@@ -131,7 +123,7 @@ show_instructions() {
     echo "📱 Mobile App Setup Complete!"
     echo "==========================================${NC}"
     echo -e "${GREEN}Backend API:${NC} http://$LOCAL_IP:8000"
-    echo -e "${GREEN}Mobile Config:${NC} Updated automatically"
+    echo -e "${GREEN}DEV_API_URL:${NC} $DEV_API_URL"
     echo ""
     echo -e "${YELLOW}To use the mobile app:${NC}"
     echo "1. Install 'Expo Go' on your phone from the App Store"
@@ -160,7 +152,7 @@ main() {
         exit 1
     fi
     
-    update_config
+    set_dev_api_url
     check_backend
     setup_mobile
     show_instructions
