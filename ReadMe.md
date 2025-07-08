@@ -95,4 +95,7 @@ Please ensure new Python / TypeScript code has accompanying tests.
 
 ---
 
+## License
+ShipIt is released under the [MIT License](LICENSE).
+
 Happy shipping! 🚀
