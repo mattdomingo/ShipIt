@@ -6,10 +6,9 @@ This module handles the scraping logic that was previously in the API layer.
 """
 
 import requests
-from typing import Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 from urllib.parse import urlparse
-import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,14 +21,11 @@ class JobPosting:
     company: Optional[str] = None
     location: Optional[str] = None
     description: Optional[str] = None
-    requirements: list = None
+    requirements: list = field(default_factory=list)
     salary: Optional[str] = None
     employment_type: Optional[str] = None
     url: Optional[str] = None
     
-    def __post_init__(self):
-        if self.requirements is None:
-            self.requirements = []
 
 
 class JobScraper:
@@ -81,7 +77,6 @@ class JobScraper:
         """Scrape LinkedIn job posting."""
         # TODO: Implement LinkedIn-specific scraping
         # For now, return mock data
-        time.sleep(2)  # Simulate processing time
         
         return JobPosting(
             title="Software Engineer Intern",
@@ -96,7 +91,6 @@ class JobScraper:
     def _scrape_indeed(self, url: str) -> JobPosting:
         """Scrape Indeed job posting."""
         # TODO: Implement Indeed-specific scraping
-        time.sleep(2)
         
         return JobPosting(
             title="Data Science Intern",
@@ -111,7 +105,6 @@ class JobScraper:
     def _scrape_glassdoor(self, url: str) -> JobPosting:
         """Scrape Glassdoor job posting."""
         # TODO: Implement Glassdoor-specific scraping
-        time.sleep(2)
         
         return JobPosting(
             title="Product Manager Intern",
@@ -126,7 +119,6 @@ class JobScraper:
     def _scrape_generic(self, url: str) -> JobPosting:
         """Generic scraping for unknown job boards."""
         # TODO: Implement generic scraping using BeautifulSoup
-        time.sleep(3)
         
         # Extract domain for company name fallback
         parsed_url = urlparse(url)

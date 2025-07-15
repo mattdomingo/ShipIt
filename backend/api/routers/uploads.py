@@ -14,6 +14,7 @@ import json
 import redis
 from typing import Dict
 from datetime import datetime
+import logging
 
 from ..models import UploadResponse, StatusEnum
 from ..auth import get_current_user, User
@@ -21,6 +22,9 @@ from ..exceptions import FileValidationException
 from ..jobs import enqueue_parse_resume
 
 router = APIRouter()
+
+# Logger
+logger = logging.getLogger(__name__)
 
 # Redis client for shared storage
 redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
@@ -100,8 +104,12 @@ async def upload_resume(
     Returns upload confirmation with unique ID for tracking.
     """
     try:
-        # Debug logging
-        print(f"Received file upload: filename={file.filename}, content_type={file.content_type}, size={getattr(file, 'size', 'unknown')}")
+        logger.debug(
+            "Received file upload: filename=%s, content_type=%s, size=%s",
+            file.filename,
+            file.content_type,
+            getattr(file, "size", "unknown"),
+        )
         
         # Validate file
         validate_file(file)
@@ -134,11 +142,11 @@ async def upload_resume(
         try:
             task_id = enqueue_parse_resume(upload_id, file_path, current_user.user_id)
             upload_record["task_id"] = task_id
-            print(f"Successfully enqueued parsing job with task_id: {task_id}")
+            logger.debug("Successfully enqueued parsing job %s", task_id)
         except Exception as e:
             # If job enqueueing fails, we can still return the upload response
             # The parsing can be attempted later
-            print(f"Failed to enqueue parsing job: {e}")
+            logger.warning("Failed to enqueue parsing job: %s", e)
             pass
         
         # Return response
@@ -153,12 +161,12 @@ async def upload_resume(
         
     except FileValidationException as e:
         # Log validation errors for debugging
-        print(f"File validation failed: {e}")
+        logger.warning("File validation failed: %s", e)
         # Re-raise validation exceptions to be handled by exception handlers
         raise
     except Exception as e:
         # Handle unexpected errors
-        print(f"Upload failed with error: {e}")
+        logger.error("Upload failed with error: %s", e)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to upload file: {str(e)}"
@@ -188,7 +196,10 @@ async def get_upload_status(
     if upload_id not in upload_records:
         # Check if we have parsed data in Redis (Celery completed)
         if parsed_data_json:
-            print(f"Upload record missing but parsed data exists in Redis for {upload_id}")
+            logger.info(
+                "Upload record missing but parsed data exists in Redis for %s",
+                upload_id,
+            )
             parsed_data = json.loads(parsed_data_json)
             # Create recovery upload record
             upload_records[upload_id] = {
@@ -201,7 +212,7 @@ async def get_upload_status(
             }
         # Check if upload record exists in Redis
         elif upload_record_json:
-            print(f"Restoring upload record from Redis for {upload_id}")
+            logger.info("Restoring upload record from Redis for %s", upload_id)
             upload_record = json.loads(upload_record_json)
             upload_record["created_at"] = datetime.fromisoformat(upload_record["created_at"])
             upload_records[upload_id] = upload_record
@@ -222,7 +233,10 @@ async def get_upload_status(
     
     # Check if parsing has completed but status wasn't updated
     if upload_record["status"] == StatusEnum.PENDING and (parsed_data_json or upload_id in parsed_data_store):
-        print(f"Found parsed data for upload {upload_id}, updating status to PARSED")
+        logger.debug(
+            "Found parsed data for upload %s, updating status to PARSED",
+            upload_id,
+        )
         upload_record["status"] = StatusEnum.PARSED
     
     # Return current status
@@ -420,7 +434,10 @@ async def get_resume_file(
     # Check if upload exists in memory or Redis
     if upload_id not in upload_records:
         if upload_record_json:
-            print(f"Restoring upload record from Redis for file access: {upload_id}")
+            logger.info(
+                "Restoring upload record from Redis for file access: %s",
+                upload_id,
+            )
             upload_record = json.loads(upload_record_json)
             upload_record["created_at"] = datetime.fromisoformat(upload_record["created_at"])
             upload_records[upload_id] = upload_record

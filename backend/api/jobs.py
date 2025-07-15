@@ -66,27 +66,12 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         # Import upload_records to update status
         from .routers.uploads import upload_records, parsed_data_store
         
-        # Fix file path - ensure we're looking from the project root
+        # Normalise file path
         if not os.path.isabs(file_path):
-            # Try multiple possible paths
-            possible_paths = [
-                file_path,  # Original path
-                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), file_path),  # From project root
-                os.path.join("/Users/matthewdomingo/Documents/Personal/Project/ShipIt", file_path),  # Absolute project root
-            ]
-            
-            actual_file_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    actual_file_path = path
-                    break
-            
-            if actual_file_path:
-                file_path = actual_file_path
-                logger.info(f"Found file at: {file_path}")
-            else:
-                logger.error(f"File not found. Tried paths: {possible_paths}")
-                raise FileNotFoundError(f"Resume file not found: {file_path}")
+            file_path = os.path.abspath(file_path)
+        if not os.path.exists(file_path):
+            logger.error("Resume file not found: %s", file_path)
+            raise FileNotFoundError(f"Resume file not found: {file_path}")
         
         # Use the actual parser module to extract resume data
         resume_data = extract_resume_data_smart(file_path)
@@ -94,12 +79,8 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         # Convert to serializable format for storage
         parsed_data = resume_data.to_dict()
         
-        # --- DEBUG LOGGING START ---
-        logger.info("--- DETAILED PARSED DATA ---")
-        logger.info(f"PARSED EDUCATION: {parsed_data.get('education')}")
-        logger.info(f"PARSED EXPERIENCE: {parsed_data.get('experience')}")
-        logger.info("--- END DETAILED PARSED DATA ---")
-        # --- DEBUG LOGGING END ---
+        logger.debug("PARSED EDUCATION: %s", parsed_data.get("education"))
+        logger.debug("PARSED EXPERIENCE: %s", parsed_data.get("experience"))
         
         # Store parsed data and update upload record status
         parsed_data_for_storage = {
