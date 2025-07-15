@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
+import ResumeScreen from '../screens/ResumeScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 import { designTokens } from '../theme/tokens';
 
@@ -79,6 +80,13 @@ export default function MainNavigator() {
       <Stack.Screen 
         name="Dashboard" 
         component={DashboardScreen}
+        options={{ 
+          cardStyle: { backgroundColor: designTokens.colors.bgPrimary }
+        }}
+      />
+      <Stack.Screen 
+        name="Resume" 
+        component={ResumeScreen}
         options={{ 
           cardStyle: { backgroundColor: designTokens.colors.bgPrimary }
         }}

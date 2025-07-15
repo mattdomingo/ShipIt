@@ -4,6 +4,7 @@
  */
 
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config';
 
 export interface UploadResponse {
@@ -14,6 +15,42 @@ export interface UploadResponse {
 }
 
 export interface UploadStatusResponse extends UploadResponse {}
+
+export interface ParsedContact {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  linkedin: string | null;
+  github: string | null;
+}
+
+export interface ParsedEducation {
+  degree: string;
+  field: string | null;
+  institution: string;
+  graduation_year: number | null;
+  gpa: number | null;
+}
+
+export interface ParsedExperience {
+  company: string;
+  role: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  location: string | null;
+  description: string | null;
+  skills_used: string[];
+}
+
+export interface ParsedResumeData {
+  upload_id: string;
+  filename: string;
+  contact: ParsedContact;
+  education: ParsedEducation[];
+  experience: ParsedExperience[];
+  skills: string[];
+  additional_sections: Record<string, any>;
+}
 
 export interface ApiError {
   code: string;
@@ -27,6 +64,13 @@ class ApiService {
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
+  }
+
+  /**
+   * Get the base URL for API calls
+   */
+  getBaseURL(): string {
+    return this.baseURL;
   }
 
   /**
@@ -101,7 +145,9 @@ class ApiService {
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const uploadData = await response.json();
+      await this.storeUploadRecord(uploadData);
+      return uploadData;
     } catch (error) {
       console.error('Upload error:', error);
       throw error;
@@ -153,6 +199,86 @@ class ApiService {
     } catch (error) {
       console.error('Demo token error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get parsed resume data for a specific upload
+   */
+  async getParsedResumeData(uploadId: string): Promise<ParsedResumeData> {
+    try {
+      const response = await fetch(`${this.baseURL}/uploads/resume/${uploadId}/parsed-data`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to get parsed resume data: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Get parsed resume data error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all uploaded resumes for the current user
+   */
+  async getAllResumes(): Promise<UploadStatusResponse[]> {
+    try {
+      // Get from local storage for now
+      const storedUploads = await this.getStoredUploads();
+      
+      // Update status for each upload by fetching from server
+      const updatedUploads = await Promise.all(
+        storedUploads.map(async (upload) => {
+          try {
+            const currentStatus = await this.getUploadStatus(upload.upload_id);
+            return currentStatus;
+          } catch (error) {
+            // If we can't fetch status, return the stored version
+            console.warn(`Could not fetch status for upload ${upload.upload_id}:`, error);
+            return upload;
+          }
+        })
+      );
+      
+      return updatedUploads;
+    } catch (error) {
+      console.error('Get all resumes error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Store uploaded resume record locally
+   */
+  private async storeUploadRecord(uploadData: UploadResponse): Promise<void> {
+    try {
+      const existingUploads = await this.getStoredUploads();
+      const updatedUploads = [uploadData, ...existingUploads.filter(u => u.upload_id !== uploadData.upload_id)];
+      await AsyncStorage.setItem('uploaded_resumes', JSON.stringify(updatedUploads));
+    } catch (error) {
+      console.error('Error storing upload record:', error);
+    }
+  }
+
+  /**
+   * Get all stored uploads from local storage
+   */
+  private async getStoredUploads(): Promise<UploadStatusResponse[]> {
+    try {
+      const stored = await AsyncStorage.getItem('uploaded_resumes');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error getting stored uploads:', error);
+      return [];
     }
   }
 }

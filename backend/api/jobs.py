@@ -6,32 +6,36 @@ Uses Celery for asynchronous task processing.
 Now integrates with parser, aggregator, and matcher modules.
 """
 
-from celery import Celery
-from typing import Dict, Any
-import uuid
-import logging
-from datetime import datetime
-import sys
 import os
+import sys
+import logging
+import json
+import redis
+from datetime import datetime
+from typing import Dict, Any
+from celery import Celery
 
-# Handle imports for both regular import and Celery worker context
-# Add backend to path to enable absolute imports
-backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
+# Add the project root to the path so we can import from backend modules
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
-from parser.extractor import extract_resume_data_smart
-from aggregator.scraper import scrape_job_posting
-from matcher.tailor import generate_patch_plan
+from backend.parser.extractor import extract_resume_data_smart
+from backend.aggregator.scraper import scrape_job_posting
+from backend.matcher.tailor import generate_patch_plan
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Celery (in production, this would be configured properly)
+# Initialize Celery
 celery_app = Celery(
-    "shipit_jobs",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    'shipit_jobs',
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/0'
 )
+
+# Redis client for shared storage
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 # Configure Celery
 celery_app.conf.update(
@@ -59,6 +63,9 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
     logger.info(f"Starting resume parsing job for upload_id: {upload_id}")
     
     try:
+        # Import upload_records to update status
+        from .routers.uploads import upload_records, parsed_data_store
+        
         # Fix file path - ensure we're looking from the project root
         if not os.path.isabs(file_path):
             # Try multiple possible paths
@@ -94,6 +101,73 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         logger.info("--- END DETAILED PARSED DATA ---")
         # --- DEBUG LOGGING END ---
         
+        # Store parsed data and update upload record status
+        parsed_data_for_storage = {
+            "upload_id": upload_id,
+            "filename": upload_records.get(upload_id, {}).get("filename", "unknown.pdf"),
+            "contact": parsed_data.get('contact', {}),
+            "education": parsed_data.get('education', []),
+            "experience": parsed_data.get('experience', []),
+            "skills": parsed_data.get('skills', []),
+            "additional_sections": parsed_data.get('additional_sections', {}),
+            "summary": {
+                "contact_fields_detected": sum([
+                    bool(parsed_data.get('contact', {}).get('name')),
+                    bool(parsed_data.get('contact', {}).get('email')),
+                    bool(parsed_data.get('contact', {}).get('phone')),
+                    bool(parsed_data.get('contact', {}).get('linkedin')),
+                    bool(parsed_data.get('contact', {}).get('github'))
+                ]),
+                "education_entries": len(parsed_data.get('education', [])),
+                "experience_entries": len(parsed_data.get('experience', [])),
+                "skills_count": len(parsed_data.get('skills', [])),
+                "additional_sections_count": len(parsed_data.get('additional_sections', {})),
+                "total_data_points": sum([
+                    bool(parsed_data.get('contact', {}).get('name')),
+                    bool(parsed_data.get('contact', {}).get('email')),
+                    bool(parsed_data.get('contact', {}).get('phone')),
+                    bool(parsed_data.get('contact', {}).get('linkedin')),
+                    bool(parsed_data.get('contact', {}).get('github'))
+                ]) + len(parsed_data.get('education', [])) + len(parsed_data.get('experience', [])) + len(parsed_data.get('skills', []))
+            }
+        }
+        
+        # Store in Redis for shared access between Celery and API server
+        redis_parsed_key = f"parsed_data:{upload_id}"
+        redis_upload_key = f"upload_record:{upload_id}"
+        
+        # Store parsed data in Redis
+        redis_client.setex(redis_parsed_key, 86400, json.dumps(parsed_data_for_storage))  # Expires in 24 hours
+        logger.info(f"Stored parsed data in Redis for upload_id: {upload_id}")
+        
+        # Also store in local memory for backward compatibility
+        parsed_data_store[upload_id] = parsed_data_for_storage
+        
+        # Update upload record status to PARSED (if record exists)
+        if upload_id in upload_records:
+            upload_records[upload_id]["status"] = "PARSED"
+            # Store updated upload record in Redis
+            upload_record_for_redis = upload_records[upload_id].copy()
+            upload_record_for_redis["created_at"] = upload_record_for_redis["created_at"].isoformat()
+            redis_client.setex(redis_upload_key, 86400, json.dumps(upload_record_for_redis))
+            logger.info(f"Updated upload record status to PARSED for upload_id: {upload_id}")
+        else:
+            logger.warning(f"Upload record not found for upload_id: {upload_id} (server may have restarted)")
+            # Create a minimal upload record so the parsed data can be accessed
+            recovery_record = {
+                "id": upload_id,
+                "filename": "recovered_upload.pdf",
+                "mime_type": "application/pdf",
+                "status": "PARSED",
+                "created_at": datetime.utcnow(),
+                "user_id": user_id
+            }
+            upload_records[upload_id] = recovery_record
+            # Store recovery record in Redis
+            recovery_record_for_redis = recovery_record.copy()
+            recovery_record_for_redis["created_at"] = recovery_record_for_redis["created_at"].isoformat()
+            redis_client.setex(redis_upload_key, 86400, json.dumps(recovery_record_for_redis))
+        
         result = {
             "upload_id": upload_id,
             "status": "PARSED",
@@ -106,6 +180,16 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         
     except Exception as e:
         logger.error(f"Resume parsing failed for upload_id: {upload_id}, error: {str(e)}")
+        
+        # Update upload record status to FAILED
+        try:
+            from .routers.uploads import upload_records
+            if upload_id in upload_records:
+                upload_records[upload_id]["status"] = "FAILED"
+                logger.info(f"Updated upload record status to FAILED for upload_id: {upload_id}")
+        except Exception as status_error:
+            logger.error(f"Failed to update upload record status: {status_error}")
+        
         return {
             "upload_id": upload_id,
             "status": "FAILED",
