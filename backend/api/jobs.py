@@ -66,10 +66,28 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         # Import upload_records to update status
         from .routers.uploads import upload_records, parsed_data_store
         
-        # Normalise path for local access
+        # Fix file path - ensure we're looking from the project root
         if not os.path.isabs(file_path):
-            file_path = os.path.abspath(file_path)
-        if not os.path.exists(file_path):
+            # Try multiple possible paths to handle different worker start locations
+            possible_paths = [
+                file_path,  # Original path (relative to cwd)
+                os.path.join(project_root, file_path),  # From project root
+                os.path.abspath(file_path),  # Absolute from current working directory
+            ]
+            
+            actual_file_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    actual_file_path = path
+                    logger.info(f"Found file at: {path}")
+                    break
+            
+            if actual_file_path:
+                file_path = actual_file_path
+            else:
+                logger.error(f"File not found. Tried paths: {possible_paths}")
+                raise FileNotFoundError(f"Resume file not found. Tried: {possible_paths}")
+        elif not os.path.exists(file_path):
             raise FileNotFoundError(f"Resume file not found: {file_path}")
         
         # Use the actual parser module to extract resume data
