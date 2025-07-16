@@ -6,7 +6,7 @@ Provides the /v1/uploads/resume endpoint with file validation.
 """
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 import uuid
 import os
 import shutil
@@ -276,129 +276,6 @@ async def get_parsed_resume_data(
     return parsed_data
 
 
-@router.post("/resume/{upload_id}/parse-now", status_code=202, tags=["development"])
-async def trigger_parsing(
-    upload_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Manually trigger the parsing process for an uploaded resume.
-    
-    **Note:** This is a temporary endpoint for development and testing.
-    In a production environment, this would be handled by a background worker.
-    """
-    from ...parser.extractor import extract_resume_data_smart
-    
-    # Check if upload exists
-    if upload_id not in upload_records:
-        raise HTTPException(status_code=404, detail="Upload not found")
-    
-    upload_record = upload_records[upload_id]
-    
-    # Check user authorization
-    if upload_record["user_id"] != current_user.user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    # Prevent re-parsing
-    if upload_record["status"] == StatusEnum.PARSED:
-        return JSONResponse(
-            status_code=200,
-            content={"message": "Resume already parsed"}
-        )
-    
-    try:
-        # Update status to PROCESSING
-        upload_record["status"] = StatusEnum.PROCESSING
-        
-        # Parse the uploaded file
-        file_path = upload_record["file_path"]
-        resume_data = extract_resume_data_smart(file_path)
-        
-        # Convert to dictionary for JSON response
-        parsed_data = {
-            "upload_id": upload_id,
-            "filename": upload_record["filename"],
-            "contact": {
-                "name": resume_data.contact.name,
-                "email": resume_data.contact.email,
-                "phone": resume_data.contact.phone,
-                "linkedin": resume_data.contact.linkedin,
-                "github": resume_data.contact.github,
-            },
-            "education": [
-                {
-                    "degree": edu.degree,
-                    "institution": edu.institution,
-                    "graduation_year": edu.graduation_year,
-                    "gpa": edu.gpa,
-                    "field": getattr(edu, 'field', None),
-                } for edu in resume_data.education
-            ],
-            "experience": [
-                {
-                    "role": exp.role,
-                    "company": exp.company,
-                    "start_date": exp.start_date,
-                    "end_date": exp.end_date,
-                    "location": getattr(exp, 'location', None),
-                    "description": exp.description,
-                } for exp in resume_data.experience
-            ],
-            "skills": resume_data.skills,
-            "additional_sections": {
-                name: {
-                    "title": section.title,
-                    "content": section.content
-                } for name, section in resume_data.additional_sections.items()
-            },
-            "summary": {
-                "contact_fields_detected": sum([
-                    bool(resume_data.contact.name),
-                    bool(resume_data.contact.email),
-                    bool(resume_data.contact.phone),
-                    bool(resume_data.contact.linkedin),
-                    bool(resume_data.contact.github)
-                ]),
-                "education_entries": len(resume_data.education),
-                "experience_entries": len(resume_data.experience),
-                "skills_count": len(resume_data.skills),
-                "additional_sections_count": len(resume_data.additional_sections),
-                "total_data_points": sum([
-                    bool(resume_data.contact.name),
-                    bool(resume_data.contact.email),
-                    bool(resume_data.contact.phone),
-                    bool(resume_data.contact.linkedin),
-                    bool(resume_data.contact.github)
-                ]) + len(resume_data.education) + len(resume_data.experience) + len(resume_data.skills)
-            }
-        }
-        
-        # Store parsed data and update status
-        parsed_data_store[upload_id] = parsed_data
-        upload_record["status"] = StatusEnum.PARSED
-        
-        return {"message": "Resume parsing initiated successfully"}
-        
-    except Exception as e:
-        # If parsing fails, update status to FAILED
-        upload_record["status"] = StatusEnum.FAILED
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse resume: {str(e)}"
-        ) 
-
-
-@router.get("/debug-stores", tags=["debug"])
-async def debug_data_stores():
-    """Debug endpoint to see what's in the data stores."""
-    return {
-        "upload_records_count": len(upload_records),
-        "upload_record_ids": list(upload_records.keys()),
-        "parsed_data_store_count": len(parsed_data_store),
-        "parsed_data_store_ids": list(parsed_data_store.keys()),
-        "upload_records": {k: {**v, "created_at": str(v.get("created_at", ""))} for k, v in upload_records.items()},
-        "parsed_data_sample": {k: {"filename": v.get("filename", ""), "contact_name": v.get("contact", {}).get("name", "")} for k, v in parsed_data_store.items()}
-    } 
 
 
 @router.get("/resume/{upload_id}/file")

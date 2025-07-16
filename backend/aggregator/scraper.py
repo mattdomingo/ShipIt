@@ -9,7 +9,6 @@ import requests
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from urllib.parse import urlparse
-import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,88 +58,34 @@ class JobScraper:
         logger.info(f"Starting job scraping for URL: {url}")
         
         try:
-            # Parse URL to determine scraping strategy
-            parsed_url = urlparse(url)
-            domain = parsed_url.netloc.lower()
-            
-            # Route to specific scraper based on domain
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+
             if 'linkedin.com' in domain:
-                return self._scrape_linkedin(url)
+                company = 'LinkedIn'
             elif 'indeed.com' in domain:
-                return self._scrape_indeed(url)
+                company = 'Indeed'
             elif 'glassdoor.com' in domain:
-                return self._scrape_glassdoor(url)
+                company = 'Glassdoor'
             else:
-                return self._scrape_generic(url)
+                company = domain.split('.')[0].title() if domain else 'Unknown'
+
+            return self._placeholder_posting(url, company)
                 
         except Exception as e:
             logger.error(f"Job scraping failed for URL: {url}, error: {str(e)}")
             raise
     
-    def _scrape_linkedin(self, url: str) -> JobPosting:
-        """Scrape LinkedIn job posting."""
-        # TODO: Implement LinkedIn-specific scraping
-        # For now, return mock data
-        time.sleep(2)  # Simulate processing time
-        
-        return JobPosting(
-            title="Software Engineer Intern",
-            company="LinkedIn",
-            location="San Francisco, CA",
-            description="Join our team as a software engineer intern and work on cutting-edge technology...",
-            requirements=["Python", "JavaScript", "React", "SQL"],
-            employment_type="Internship",
-            url=url
-        )
-    
-    def _scrape_indeed(self, url: str) -> JobPosting:
-        """Scrape Indeed job posting."""
-        # TODO: Implement Indeed-specific scraping
-        time.sleep(2)
-        
-        return JobPosting(
-            title="Data Science Intern",
-            company="Indeed",
-            location="Austin, TX",
-            description="Work with our data science team to analyze job market trends...",
-            requirements=["Python", "SQL", "Machine Learning", "Statistics"],
-            employment_type="Internship",
-            url=url
-        )
-    
-    def _scrape_glassdoor(self, url: str) -> JobPosting:
-        """Scrape Glassdoor job posting."""
-        # TODO: Implement Glassdoor-specific scraping
-        time.sleep(2)
-        
-        return JobPosting(
-            title="Product Manager Intern",
-            company="Glassdoor",
-            location="Mill Valley, CA",
-            description="Support product development and user research initiatives...",
-            requirements=["Product Management", "Analytics", "Communication"],
-            employment_type="Internship",
-            url=url
-        )
-    
-    def _scrape_generic(self, url: str) -> JobPosting:
-        """Generic scraping for unknown job boards."""
-        # TODO: Implement generic scraping using BeautifulSoup
-        time.sleep(3)
-        
-        # Extract domain for company name fallback
-        parsed_url = urlparse(url)
-        domain_parts = parsed_url.netloc.split('.')
-        company_guess = domain_parts[0] if domain_parts else "Unknown Company"
-        
+    def _placeholder_posting(self, url: str, company: str) -> JobPosting:
+        """Return a simple placeholder posting."""
         return JobPosting(
             title="Software Engineering Intern",
-            company=company_guess.title(),
+            company=company,
             location="Remote",
-            description="Exciting internship opportunity in software engineering...",
-            requirements=["Programming", "Problem Solving", "Teamwork"],
+            description="Demo job posting",
+            requirements=["Python"],
             employment_type="Internship",
-            url=url
+            url=url,
         )
 
 

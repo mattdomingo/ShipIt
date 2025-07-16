@@ -68,25 +68,27 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         
         # Fix file path - ensure we're looking from the project root
         if not os.path.isabs(file_path):
-            # Try multiple possible paths
+            # Try multiple possible paths to handle different worker start locations
             possible_paths = [
-                file_path,  # Original path
-                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), file_path),  # From project root
-                os.path.join("/Users/matthewdomingo/Documents/Personal/Project/ShipIt", file_path),  # Absolute project root
+                file_path,  # Original path (relative to cwd)
+                os.path.join(project_root, file_path),  # From project root
+                os.path.abspath(file_path),  # Absolute from current working directory
             ]
             
             actual_file_path = None
             for path in possible_paths:
                 if os.path.exists(path):
                     actual_file_path = path
+                    logger.info(f"Found file at: {path}")
                     break
             
             if actual_file_path:
                 file_path = actual_file_path
-                logger.info(f"Found file at: {file_path}")
             else:
                 logger.error(f"File not found. Tried paths: {possible_paths}")
-                raise FileNotFoundError(f"Resume file not found: {file_path}")
+                raise FileNotFoundError(f"Resume file not found. Tried: {possible_paths}")
+        elif not os.path.exists(file_path):
+            raise FileNotFoundError(f"Resume file not found: {file_path}")
         
         # Use the actual parser module to extract resume data
         resume_data = extract_resume_data_smart(file_path)
@@ -94,12 +96,6 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
         # Convert to serializable format for storage
         parsed_data = resume_data.to_dict()
         
-        # --- DEBUG LOGGING START ---
-        logger.info("--- DETAILED PARSED DATA ---")
-        logger.info(f"PARSED EDUCATION: {parsed_data.get('education')}")
-        logger.info(f"PARSED EXPERIENCE: {parsed_data.get('experience')}")
-        logger.info("--- END DETAILED PARSED DATA ---")
-        # --- DEBUG LOGGING END ---
         
         # Store parsed data and update upload record status
         parsed_data_for_storage = {
@@ -109,27 +105,7 @@ def parse_resume_job(self, upload_id: str, file_path: str, user_id: str) -> Dict
             "education": parsed_data.get('education', []),
             "experience": parsed_data.get('experience', []),
             "skills": parsed_data.get('skills', []),
-            "additional_sections": parsed_data.get('additional_sections', {}),
-            "summary": {
-                "contact_fields_detected": sum([
-                    bool(parsed_data.get('contact', {}).get('name')),
-                    bool(parsed_data.get('contact', {}).get('email')),
-                    bool(parsed_data.get('contact', {}).get('phone')),
-                    bool(parsed_data.get('contact', {}).get('linkedin')),
-                    bool(parsed_data.get('contact', {}).get('github'))
-                ]),
-                "education_entries": len(parsed_data.get('education', [])),
-                "experience_entries": len(parsed_data.get('experience', [])),
-                "skills_count": len(parsed_data.get('skills', [])),
-                "additional_sections_count": len(parsed_data.get('additional_sections', {})),
-                "total_data_points": sum([
-                    bool(parsed_data.get('contact', {}).get('name')),
-                    bool(parsed_data.get('contact', {}).get('email')),
-                    bool(parsed_data.get('contact', {}).get('phone')),
-                    bool(parsed_data.get('contact', {}).get('linkedin')),
-                    bool(parsed_data.get('contact', {}).get('github'))
-                ]) + len(parsed_data.get('education', [])) + len(parsed_data.get('experience', [])) + len(parsed_data.get('skills', []))
-            }
+            "additional_sections": parsed_data.get('additional_sections', {})
         }
         
         # Store in Redis for shared access between Celery and API server
